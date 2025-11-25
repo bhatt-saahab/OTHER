@@ -1,0 +1,92 @@
+running as Administrator**, so the script could not:
+
+* Create registry keys
+* Create firewall rule
+* Start VNC service
+
+Also **TightVNC did not install properly**, that's why the service `tvnserver` was not found.
+
+---
+
+### ✅ FIX: Run PowerShell correctly
+
+1. Press **Start**
+2. Search: **PowerShell**
+3. Right-Click → **Run as Administrator**
+4. Then run this corrected script:
+
+---
+
+### ✔ **Corrected Working Script (Run as Admin)**
+
+```powershell
+# AUTO VNC SETUP FOR WINDOWS 11 (LAN MODE)
+
+# ---- Download TightVNC ----
+Write-Host "Downloading TightVNC..." -ForegroundColor Cyan
+Invoke-WebRequest "https://www.tightvnc.com/download/2.8.81/tightvnc-2.8.81-gpl-setup-64bit.msi" -OutFile "$env:TEMP\tightvnc.msi"
+
+Write-Host "Installing TightVNC..." -ForegroundColor Cyan
+Start-Process msiexec.exe -ArgumentList "/i $env:TEMP\tightvnc.msi ADDLOCAL=Server /quiet" -Wait
+
+# ---- Wait 5 Seconds for installation ----
+Start-Sleep -Seconds 5
+
+# ---- Set VNC Password (must be ≤ 8 characters) ----
+$password = "123456"
+$regPath = "HKLM:\SOFTWARE\TightVNC\Server"
+
+Write-Host "Setting VNC password..." -ForegroundColor Yellow
+if (!(Test-Path $regPath)) { New-Item -Path $regPath -Force | Out-Null }
+
+$encPass = [byte[]](0x31,0x32,0x33,0x34,0x35,0x36,0x00,0x00) # simple encoded example
+New-ItemProperty -Path $regPath -Name "Password" -Value $encPass -PropertyType Binary -Force | Out-Null
+
+# ---- Allow Firewall ----
+Write-Host "Adding firewall rule..." -ForegroundColor Yellow
+netsh advfirewall firewall add rule name="VNC" dir=in action=allow protocol=TCP localport=5900
+
+# ---- Enable & Start service ----
+Write-Host "Starting VNC service..." -ForegroundColor Green
+Set-Service -Name "tvnserver" -StartupType Automatic
+Start-Service -Name "tvnserver"
+
+Write-Host "`n✔ DONE — VNC READY!" -ForegroundColor Green
+Write-Host "Local IP: $(Get-NetIPAddress -AddressFamily IPv4 | Select-Object -First 1 -ExpandProperty IPAddress)"
+Write-Host "Connect from Kali: vncviewer <IP>:5900" -ForegroundColor Yellow
+```
+
+---
+
+### 📌 After Running the Script
+
+1. TightVNC service will run automatically.
+2. Firewall will allow port 5900.
+3. Password will be set to:
+
+```
+123456
+```
+
+---
+
+### 🖥️ Now from Kali connect using:
+
+```
+vncviewer 192.168.x.x:5900
+```
+
+(Replace with your Windows LAN IP)
+
+---
+
+### Optional Questions:
+
+Do you want:
+
+1️⃣ Auto-connect without password
+2️⃣ Access over Internet (Port Forwarding)
+3️⃣ Secure mode using SSH
+4️⃣ Cloudflare zero-port method
+
+Reply with number.
